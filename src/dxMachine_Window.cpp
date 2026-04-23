@@ -45,7 +45,7 @@ void InitWindow(const wchar_t* title, int w, int h)
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,
         CW_USEDEFAULT, CW_USEDEFAULT, rw, rh,
         NULL, NULL, module, NULL);
-    if (glob.hwnd == nullptr) ShowMessage(L"HATA", L"Window handler is null");
+    if (glob.hwnd == nullptr) ::MessageBoxW(NULL, L"Window handler is null", L"HATA", MB_ICONERROR | MB_OK);
     active = true;
 }
 
@@ -67,7 +67,7 @@ void *GetWindow()
 
 void ShowMessage(const wchar_t *title, const wchar_t *text)
 {
-    ::MessageBoxW(NULL, text, title, MB_ICONERROR | MB_OK);
+    ::MessageBoxW(NULL, text, title, MB_ICONINFORMATION | MB_OK);
 }
 
 void ProcessMessage()

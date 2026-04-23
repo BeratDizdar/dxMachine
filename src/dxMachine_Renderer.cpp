@@ -140,7 +140,7 @@ void DrawSpriteEx(TexID texture, int x, int y, int w, int h)
     dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(Vertex2D));
 }
 
-TexID LoadTextureFromFile(const char* path) 
+TexID TextureFromFile(const char* path)
 {
     if (cur_tex_id >= _max_texture) {
         ::MessageBoxW(NULL, L"Texture Overflow", L"HATA", MB_ICONERROR | MB_OK);
@@ -185,7 +185,7 @@ TexID LoadTextureFromFile(const char* path)
     return cur_tex_id++;
 }
 
-TexID CreateTextureFromTexture(TexID root_id, int x, int y, int w, int h)
+TexID TextureFromTexture(TexID root_id, int x, int y, int w, int h)
 {
     if (cur_tex_id >= _max_texture) {
         ::MessageBoxW(NULL, L"Texture Overflow", L"HATA", MB_ICONERROR | MB_OK);

@@ -6,5 +6,3 @@ docs
 build.bat
 deploy.bat
 assets
-
-src/dxMachine_Audio.cpp
