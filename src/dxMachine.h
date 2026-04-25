@@ -14,23 +14,18 @@ namespace dxMachine
 
 /* Window */
 
-void InitWindow(const wchar_t* title, int w, int h);
+void InitWindow(const wchar_t* title, int w, int h, int max_texture);
 void CloseWindow();
 bool WindowActive();
-void* GetWindow();
 void ShowMessage(const wchar_t* title, const wchar_t* text);
 void ProcessMessage();
 
 /* Timer */
 
-void InitTimer();
-void UpdateTimer();
 float GetDeltaTime();
 
 /* Renderer */
 
-void InitGraphics(void* window, int max_texture);
-void CloseGraphics();
 void ScreenClear(unsigned long color);
 void ScreenFlip();
 TexID TextureFromFile(const char* path);
@@ -40,15 +35,12 @@ void DrawSpriteEx(TexID texture, int x, int y, int w, int h);
 
 /* Input */
 
-void UpdateInput();
 bool KeyDown(int k);
 bool KeyPressed(int k);
 bool KeyReleased(int k);
 
 /* Audio */
 
-void InitAudio();
-void CloseAudio();
 AudioID AudioFromOGG(const char* path);
 void PlayAudio(AudioID audio);
 void StopAudio(AudioID audio);

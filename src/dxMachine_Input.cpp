@@ -4,10 +4,7 @@
 static bool curr_keys[256] = { false };
 static bool prev_keys[256] = { false };
 
-namespace dxMachine
-{
-
-void UpdateInput()
+void __UpdateInput()
 {
     for (int i = 0; i < 256; i++)
     {
@@ -15,6 +12,10 @@ void UpdateInput()
         curr_keys[i] = (GetAsyncKeyState(i) & 0x8000) != 0;
     }
 }
+
+namespace dxMachine
+{
+
 
 bool KeyDown(int k)
 {

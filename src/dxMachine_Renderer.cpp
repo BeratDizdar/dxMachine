@@ -3,10 +3,11 @@
 #include <Windows.h>
 #include <d3d9.h>
 
-static IDirect3D9* root = nullptr;
-static IDirect3DDevice9* dev = nullptr;
-static IDirect3DSurface9* surface = nullptr;
-static IDirect3DSurface9* backbuffer = nullptr;
+extern HWND ex_hwnd;
+static IDirect3D9* root;
+static IDirect3DDevice9* dev;
+static IDirect3DSurface9* surface;
+static IDirect3DSurface9* backbuffer;
 
 struct Vertex2D {
     float x, y, z, rhw;
@@ -15,18 +16,27 @@ struct Vertex2D {
 
 struct Texture {
     IDirect3DTexture9* ptr;
-    int w, h;
+    int w, h; // size
     float u0, v0, u1, v1;
 };
+
+// SANIRIM UZUN İSİMLER KOYMA İŞİNİ ÇÖZMEM LAZIM
 
 static Texture* tex;
 static int cur_tex_id = 0;
 static int _max_texture = 0;
+static int current_batch_texture_id = 0;
+static Vertex2D vertex_batch[4000]{};
+static int current_batch = 0;
 
-namespace dxMachine
-{
-    
-void InitGraphics(void *window, int max_texture)
+static void __Flush() {
+    dev->SetTexture(0, tex[current_batch_texture_id].ptr);
+    dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, current_batch - 2, vertex_batch, sizeof(Vertex2D));
+    current_batch = 0;
+}
+
+void __InitGraphics(int max_texture)
 {
     root = ::Direct3DCreate9(D3D_SDK_VERSION);
     if (root == nullptr) ::MessageBoxW(NULL, L"Direct3D9 is null", L"HATA", MB_ICONERROR | MB_OK);
@@ -45,12 +55,12 @@ void InitGraphics(void *window, int max_texture)
     param.BackBufferFormat = D3DFMT_X8R8G8B8;
     param.BackBufferCount = 1;
     param.PresentationInterval = D3DPRESENT_INTERVAL_ONE;
-    root->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, (HWND)window,
+    root->CreateDevice(D3DADAPTER_DEFAULT, D3DDEVTYPE_HAL, ex_hwnd,
         vertexProcessing | D3DCREATE_PUREDEVICE, &param, &dev);
     if (dev == nullptr) ::MessageBoxW(NULL, L"Direct3DDevice9 is null", L"HATA", MB_ICONERROR | MB_OK);
 
     RECT rect{};
-    if (::GetClientRect((HWND)window, &rect)) {
+    if (::GetClientRect(ex_hwnd, &rect)) {
         int width = rect.right - rect.left;
         int height = rect.bottom - rect.top;
         dev->CreateRenderTarget(width, height, D3DFMT_X8R8G8B8, D3DMULTISAMPLE_NONE, 0, TRUE, &surface, NULL);
@@ -62,6 +72,7 @@ void InitGraphics(void *window, int max_texture)
     dev->SetRenderState(D3DRS_SRCBLEND, D3DBLEND_SRCALPHA);
     dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
     dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
+    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
 
     dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
     dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
@@ -71,7 +82,7 @@ void InitGraphics(void *window, int max_texture)
     tex = (Texture*)calloc(_max_texture, sizeof(Texture));
 }
 
-void CloseGraphics()
+void __CloseGraphics()
 {
     if (surface) surface->Release();
     if (backbuffer) backbuffer->Release();
@@ -82,6 +93,9 @@ void CloseGraphics()
     if (root) root->Release();
 }
 
+namespace dxMachine
+{
+
 void ScreenClear(unsigned long color)
 {
     dev->Clear(0, 0, D3DCLEAR_TARGET, color, 1.0f, 0);
@@ -90,54 +104,58 @@ void ScreenClear(unsigned long color)
 
 void ScreenFlip()
 {
+    __Flush();
     dev->EndScene();
     dev->Present(0, 0, 0, 0);
 }
 
 void DrawSprite(TexID texture, int x, int y)
 {
-    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-    dev->SetTexture(0, tex[texture].ptr);
+    if (texture != current_batch_texture_id || current_batch > 3990) {
+        __Flush();
+        current_batch_texture_id = texture;
+    }
 
-    float width = (float)tex[texture].w;
-    float height = (float)tex[texture].h;
     float u0 = tex[texture].u0;
     float v0 = tex[texture].v0;
     float u1 = tex[texture].u1;
     float v1 = tex[texture].v1;
+    float w = tex[texture].w;
+    float h = tex[texture].h;
 
-    Vertex2D quad[4] = {
-        { (float)x,         (float)y,           0.0f, 1.0f,   u0, v0 },
-        { (float)x + width, (float)y,           0.0f, 1.0f,   u1, v0 },
-        { (float)x,         (float)y + height,  0.0f, 1.0f,   u0, v1 },
-        { (float)x + width, (float)y + height,  0.0f, 1.0f,   u1, v1 }
-    };
+    if (current_batch > 0) 
+    {
+        vertex_batch[current_batch++] = vertex_batch[current_batch - 1];
+        vertex_batch[current_batch++] = Vertex2D { (float)x, (float)y, 0.0f, 1.0f, u0, v0 };
+    }
 
-    dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
-    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(Vertex2D));
+    vertex_batch[current_batch++] = Vertex2D {(float)x, (float)y, 0.0f, 1.0f, u0, v0};
+    vertex_batch[current_batch++] = Vertex2D {(float)x+w, (float)y, 0.0f, 1.0f, u1, v0};
+    vertex_batch[current_batch++] = Vertex2D {(float)x, (float)y+h, 0.0f, 1.0f, u0, v1};
+    vertex_batch[current_batch++] = Vertex2D {(float)x+w, (float)y+h, 0.0f, 1.0f, u1, v1};
 }
 
 void DrawSpriteEx(TexID texture, int x, int y, int w, int h)
 {
-    dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
-    dev->SetTexture(0, tex[texture].ptr);
-
-    float width = w;
-    float height = h;
+    if (texture != current_batch_texture_id || current_batch > 3990) {
+        __Flush();
+        current_batch_texture_id = texture;
+    }
     float u0 = tex[texture].u0;
     float v0 = tex[texture].v0;
     float u1 = tex[texture].u1;
     float v1 = tex[texture].v1;
 
-    Vertex2D quad[4] = {
-        { (float)x,         (float)y,           0.0f, 1.0f,   u0, v0 },
-        { (float)x + width, (float)y,           0.0f, 1.0f,   u1, v0 },
-        { (float)x,         (float)y + height,  0.0f, 1.0f,   u0, v1 },
-        { (float)x + width, (float)y + height,  0.0f, 1.0f,   u1, v1 }
-    };
+    if (current_batch > 0) 
+    {
+        vertex_batch[current_batch++] = vertex_batch[current_batch - 1];
+        vertex_batch[current_batch++] = Vertex2D { (float)x, (float)y, 0.0f, 1.0f, u0, v0 };
+    }
 
-    dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
-    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, quad, sizeof(Vertex2D));
+    vertex_batch[current_batch++] = Vertex2D {(float)x,          (float)y,          0.0f, 1.0f,u0,v0};
+    vertex_batch[current_batch++] = Vertex2D {(float)x+(float)w, (float)y,          0.0f, 1.0f,u1,v0};
+    vertex_batch[current_batch++] = Vertex2D {(float)x,          (float)y+(float)h, 0.0f, 1.0f,u0,v1};
+    vertex_batch[current_batch++] = Vertex2D {(float)x+(float)w, (float)y+(float)h, 0.0f, 1.0f,u1,v1};
 }
 
 TexID TextureFromFile(const char* path)

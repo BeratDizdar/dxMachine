@@ -1,10 +1,16 @@
 #include "dxMachine.h"
 #include <Windows.h>
 
-static struct Window { // BUNU SİLECEĞİM UNUTMAMAM LAZIM
-    HWND hwnd;
-} glob;
-static bool active;
+extern HWND ex_hwnd;
+extern void __InitTimer();
+extern void __InitAudio();
+extern void __CloseAudio();
+extern void __InitGraphics(int max_texture);
+extern void __CloseGraphics();
+extern void __UpdateInput();
+extern void __UpdateTimer();
+
+static bool active{};
 
 namespace dxMachine
 {
@@ -17,7 +23,7 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM 
     }
 }
 
-void InitWindow(const wchar_t* title, int w, int h)
+void InitWindow(const wchar_t* title, int w, int h, int max_texture)
 {
     HINSTANCE module = ::GetModuleHandleW(NULL);
     WNDCLASSW wnd{};
@@ -40,29 +46,30 @@ void InitWindow(const wchar_t* title, int w, int h)
     int rw = rc.right - rc.left;
     int rh = rc.bottom - rc.top;
 
-    glob.hwnd = ::CreateWindowExW(
+    ex_hwnd = ::CreateWindowExW(
         WS_EX_OVERLAPPEDWINDOW, wnd.lpszClassName, title,
         WS_OVERLAPPEDWINDOW | WS_VISIBLE,
         CW_USEDEFAULT, CW_USEDEFAULT, rw, rh,
         NULL, NULL, module, NULL);
-    if (glob.hwnd == nullptr) ::MessageBoxW(NULL, L"Window handler is null", L"HATA", MB_ICONERROR | MB_OK);
+    if (ex_hwnd == nullptr) ::MessageBoxW(NULL, L"Window handler is null", L"HATA", MB_ICONERROR | MB_OK);
     active = true;
+
+    __InitGraphics(max_texture);
+    __InitTimer();
+    __InitAudio();
 }
 
 void CloseWindow()
 {
+    __CloseAudio();
+    __CloseGraphics();
     active = false;
-    ::DestroyWindow(glob.hwnd);
+    ::DestroyWindow(ex_hwnd);
 }
 
 bool WindowActive()
 {
     return active;
-}
-
-void *GetWindow()
-{
-    return (void*)glob.hwnd;
 }
 
 void ShowMessage(const wchar_t *title, const wchar_t *text)
@@ -78,6 +85,8 @@ void ProcessMessage()
         ::TranslateMessage(&msg);
         ::DispatchMessage(&msg);
     }
+    __UpdateInput();
+    __UpdateTimer();
 }
 
 }

@@ -18,10 +18,7 @@ struct AudioNode {
 static AudioNode g_Audio[256];
 static int cur_audio_id = 0;
 
-namespace dxMachine
-{
-
-void InitAudio()
+void __InitAudio()
 {
     CoInitializeEx(NULL, COINIT_MULTITHREADED);
 
@@ -38,7 +35,7 @@ void InitAudio()
     }
 }
 
-void CloseAudio()
+void __CloseAudio()
 {
     for (int i = 0; i < cur_audio_id; i++) {
         if (g_Audio[i].voice) g_Audio[i].voice->DestroyVoice();
@@ -49,6 +46,9 @@ void CloseAudio()
     if (root) root->Release();
     CoUninitialize();
 }
+
+namespace dxMachine
+{
 
 AudioID AudioFromOGG(const char* path)
 {
