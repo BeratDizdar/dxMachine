@@ -4,10 +4,15 @@
 #include <d3d9.h>
 
 extern HWND ex_hwnd;
+extern int ex_window_width;
+extern int ex_window_height;
+
 static IDirect3D9* root;
 static IDirect3DDevice9* dev;
-static IDirect3DSurface9* surface;
 static IDirect3DSurface9* backbuffer;
+static IDirect3DTexture9* emulation_texture;
+static IDirect3DSurface9* emulation_surface;
+static int v_w, v_h;
 
 struct Vertex2D {
     float x, y, z, rhw;
@@ -59,13 +64,6 @@ void __InitGraphics(int max_texture)
         vertexProcessing | D3DCREATE_PUREDEVICE, &param, &dev);
     if (dev == nullptr) ::MessageBoxW(NULL, L"Direct3DDevice9 is null", L"HATA", MB_ICONERROR | MB_OK);
 
-    RECT rect{};
-    if (::GetClientRect(ex_hwnd, &rect)) {
-        int width = rect.right - rect.left;
-        int height = rect.bottom - rect.top;
-        dev->CreateRenderTarget(width, height, D3DFMT_X8R8G8B8, D3DMULTISAMPLE_NONE, 0, TRUE, &surface, NULL);
-    }
-
     dev->GetBackBuffer(0, 0, D3DBACKBUFFER_TYPE_MONO, &backbuffer);
 
     dev->SetRenderState(D3DRS_LIGHTING, FALSE);
@@ -73,10 +71,18 @@ void __InitGraphics(int max_texture)
     dev->SetRenderState(D3DRS_DESTBLEND, D3DBLEND_INVSRCALPHA);
     dev->SetRenderState(D3DRS_CULLMODE, D3DCULL_NONE);
     dev->SetRenderState(D3DRS_ALPHABLENDENABLE, TRUE);
+    dev->SetRenderState(D3DRS_MULTISAMPLEANTIALIAS, FALSE);
 
     dev->SetSamplerState(0, D3DSAMP_MINFILTER, D3DTEXF_POINT);
     dev->SetSamplerState(0, D3DSAMP_MAGFILTER, D3DTEXF_POINT);
     dev->SetSamplerState(0, D3DSAMP_MIPFILTER, D3DTEXF_NONE);
+
+    RECT rect{};
+    if (::GetClientRect(ex_hwnd, &rect)) {
+        int width = rect.right - rect.left;
+        int height = rect.bottom - rect.top;
+        dxMachine::ScreenEmulation(width, height);
+    }
 
     _max_texture = max_texture;
     tex = (Texture*)calloc(_max_texture, sizeof(Texture));
@@ -84,7 +90,8 @@ void __InitGraphics(int max_texture)
 
 void __CloseGraphics()
 {
-    if (surface) surface->Release();
+    if (emulation_surface) emulation_surface->Release();
+    if (emulation_texture) emulation_texture->Release();
     if (backbuffer) backbuffer->Release();
     for (int i = 0; i < _max_texture; i++) {
         if (tex[i].ptr) tex[i].ptr->Release();
@@ -96,6 +103,28 @@ void __CloseGraphics()
 namespace dxMachine
 {
 
+void ScreenEmulation(int virtual_w, int virtual_h)
+{
+    v_w = virtual_w;
+    v_h = virtual_h;
+
+    if (emulation_surface) emulation_surface->Release();
+    if (emulation_texture) emulation_texture->Release();
+
+    dev->CreateTexture(
+        virtual_w, virtual_h, 
+        1, 
+        D3DUSAGE_RENDERTARGET, 
+        D3DFMT_X8R8G8B8, 
+        D3DPOOL_DEFAULT, 
+        &emulation_texture,
+        NULL
+    );
+
+    emulation_texture->GetSurfaceLevel(0, &emulation_surface);
+    dev->SetRenderTarget(0, emulation_surface);
+}
+
 void ScreenClear(unsigned long color)
 {
     dev->Clear(0, 0, D3DCLEAR_TARGET, color, 1.0f, 0);
@@ -106,7 +135,29 @@ void ScreenFlip()
 {
     __Flush();
     dev->EndScene();
+
+    dev->SetRenderTarget(0, backbuffer);
+    dev->BeginScene();
+    dev->SetTexture(0, emulation_texture);
+
+    float fx = -0.5f;
+    float fy = -0.5f;
+    float fw = (float)ex_window_width;
+    float fh = (float)ex_window_height;
+
+    Vertex2D full_screen[4];
+    full_screen[0] = { fx,      fy,      0.0f, 1.0f, 0.0f, 0.0f };
+    full_screen[1] = { fx + fw, fy,      0.0f, 1.0f, 1.0f, 0.0f };
+    full_screen[2] = { fx,      fy + fh, 0.0f, 1.0f, 0.0f, 1.0f };
+    full_screen[3] = { fx + fw, fy + fh, 0.0f, 1.0f, 1.0f, 1.0f };
+
+    dev->SetFVF(D3DFVF_XYZRHW | D3DFVF_TEX1);
+    dev->DrawPrimitiveUP(D3DPT_TRIANGLESTRIP, 2, full_screen, sizeof(Vertex2D));
+    dev->EndScene();
     dev->Present(0, 0, 0, 0);
+
+    dev->SetTexture(0, NULL);
+    dev->SetRenderTarget(0, emulation_surface);
 }
 
 void DrawSprite(TexID texture, int x, int y)

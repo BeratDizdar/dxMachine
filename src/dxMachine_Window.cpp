@@ -2,6 +2,8 @@
 #include <Windows.h>
 
 extern HWND ex_hwnd;
+extern int ex_window_width;
+extern int ex_window_height;
 extern void __InitTimer();
 extern void __InitAudio();
 extern void __CloseAudio();
@@ -25,6 +27,8 @@ static LRESULT CALLBACK WndProc(HWND hwnd, UINT umessage, WPARAM wparam, LPARAM 
 
 void InitWindow(const wchar_t* title, int w, int h, int max_texture)
 {
+    ex_window_width = w;
+    ex_window_height = h;
     HINSTANCE module = ::GetModuleHandleW(NULL);
     WNDCLASSW wnd{};
     wnd.hInstance = module;
@@ -47,8 +51,8 @@ void InitWindow(const wchar_t* title, int w, int h, int max_texture)
     int rh = rc.bottom - rc.top;
 
     ex_hwnd = ::CreateWindowExW(
-        WS_EX_OVERLAPPEDWINDOW, wnd.lpszClassName, title,
-        WS_OVERLAPPEDWINDOW | WS_VISIBLE,
+        exStyle, wnd.lpszClassName, title,
+        style | WS_VISIBLE,
         CW_USEDEFAULT, CW_USEDEFAULT, rw, rh,
         NULL, NULL, module, NULL);
     if (ex_hwnd == nullptr) ::MessageBoxW(NULL, L"Window handler is null", L"HATA", MB_ICONERROR | MB_OK);
@@ -67,17 +71,7 @@ void CloseWindow()
     ::DestroyWindow(ex_hwnd);
 }
 
-bool WindowActive()
-{
-    return active;
-}
-
-void ShowMessage(const wchar_t *title, const wchar_t *text)
-{
-    ::MessageBoxW(NULL, text, title, MB_ICONINFORMATION | MB_OK);
-}
-
-void ProcessMessage()
+bool ProcessMessage()
 {
     MSG msg{};
     while (::PeekMessage(&msg, 0, 0, 0, PM_REMOVE))
@@ -87,6 +81,8 @@ void ProcessMessage()
     }
     __UpdateInput();
     __UpdateTimer();
+
+    return active;
 }
 
 }

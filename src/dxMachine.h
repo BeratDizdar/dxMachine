@@ -4,9 +4,15 @@ typedef unsigned int ID;
 typedef ID TexID;
 typedef ID AudioID;
 
-/* UNUTMA
-- ASENKRON YÜKLEME FONKSİYONLARI EKLE
-- THREADPOOL işi ile uğraştın götünde patladı fikir
+/* UNUTMADAN
+- text ve font işine bir hal çare   (şüpheli)
+- temel geometri                    (olabilir)
+- kamera?                           (şüpheli)
+- bit derinliği ekle                (büyük ihtimalle olacak)
+- Hata mesajları programı bitirmeli (kesin olacak)
+- asenkron yükleme fonksiyonları    (büyük ihtimalle olacak)
+- screenshot?                       (olabilir)
+- memory management?                (sanırım gerekecek)
 */
 
 namespace dxMachine
@@ -16,9 +22,7 @@ namespace dxMachine
 
 void InitWindow(const wchar_t* title, int w, int h, int max_texture);
 void CloseWindow();
-bool WindowActive();
-void ShowMessage(const wchar_t* title, const wchar_t* text);
-void ProcessMessage();
+bool ProcessMessage();
 
 /* Timer */
 
@@ -26,6 +30,7 @@ float GetDeltaTime();
 
 /* Renderer */
 
+void ScreenEmulation(int virtual_w, int virtual_h);
 void ScreenClear(unsigned long color);
 void ScreenFlip();
 TexID TextureFromFile(const char* path);
@@ -38,11 +43,18 @@ void DrawSpriteEx(TexID texture, int x, int y, int w, int h);
 bool KeyDown(int k);
 bool KeyPressed(int k);
 bool KeyReleased(int k);
+// WaitKey();
+// MousePos(int* x, int* y);
+// MouseInput();
 
 /* Audio */
 
 AudioID AudioFromOGG(const char* path);
 void PlayAudio(AudioID audio);
 void StopAudio(AudioID audio);
+
+/* Compute */
+
+bool CheckAABB(int ax, int ay, int aw, int wh, int bx, int by, int bw, int bh);
 
 }
