@@ -6,3 +6,4 @@ docs
 build.bat
 deploy.bat
 assets
+obj
